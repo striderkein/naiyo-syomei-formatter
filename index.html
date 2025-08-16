@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>内容証明 謄本フォーマッタ</title>
+  <style>
+    :root{
+      --paper-w: 210mm; /* A4 幅 */
+      --paper-h: 297mm; /* A4 高 */
+      --margin: 18mm;   /* 余白（本文） */
+      --grid-gap: 8px;
+      --mono: ui-monospace, Menlo, Consolas, "Roboto Mono", "Noto Sans Mono CJK JP", monospace;
+      --body: system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      --ink: #111;
+      --muted: #667085;
+      --line: #e6e6e6;
+      --accent: #0a7cff;
+      --warn: #b54708;
+      --ok: #127a2e;
+    }
+    *{ box-sizing: border-box; }
+    html, body{ height:100%; background:#fafafa; color:var(--ink); }
+    body{ font-family:var(--body); margin:0; line-height:1.6; }
+    header{
+      position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid var(--line);
+      padding:12px 16px; display:flex; gap:16px; align-items:center; flex-wrap:wrap;
+    }
+    header h1{ font-size:18px; margin:0; font-weight:700; }
+    .wrap{ display:grid; grid-template-columns: 360px 1fr; gap: var(--grid-gap); padding:16px; align-items:start; }
+    .card{
+      background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px;
+      box-shadow: 0 1px 0 rgba(0,0,0,.03);
+    }
+    .card h2{ font-size:14px; margin:0 0 8px; color:#1f2937; }
+    .field{ display:flex; flex-direction:column; gap:6px; margin:10px 0; }
+    .field label{ font-size:12px; color:var(--muted); }
+    .field input[type="text"],
+    .field input[type="number"],
+    .field textarea,
+    .field select{
+      width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font:inherit;
+      background:#fff;
+    }
+    .hint{ font-size:12px; color:var(--muted); }
+    .row{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+    .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    button{
+      appearance:none; border:none; background:var(--accent); color:#fff; padding:10px 14px; border-radius:10px;
+      font-weight:600; cursor:pointer;
+    }
+    button.secondary{ background:#f3f4f6; color:#111; }
+    button.ghost{ background:transparent; color:var(--accent); }
+    .note{ font-size:12px; color:var(--muted); }
+    .warn{ color:var(--warn); }
+    .ok{ color:var(--ok); }
+
+    /* プレビュー（謄本） */
+    .preview{
+      display:flex; flex-direction:column; gap:12px;
+    }
+    .sheet{
+      width:var(--paper-w); height:var(--paper-h); background:#fff; border:1px solid var(--line);
+      box-shadow:0 4px 16px rgba(0,0,0,.05); margin:0 auto; position:relative;
+      display:flex; flex-direction:column; padding: var(--margin);
+    }
+    .sheet header{
+      position:static; border:none; padding:0; margin:0 0 8px; background:transparent;
+    }
+    .doc-title{
+      font-weight:700; text-align:center; margin:0 0 8px; font-size:16px;
+    }
+    .meta{
+      display:flex; justify-content:space-between; align-items:start; gap:12px;
+      font-size:12px; color:#374151; margin-bottom:6px;
+    }
+    .body{
+      font-family:var(--mono);
+      border-top:1px dashed var(--line);
+      border-bottom:1px dashed var(--line);
+      padding:10px 0;
+      white-space:pre-wrap;
+    }
+    .gridline{
+      position:absolute; left:var(--margin); right:var(--margin); pointer-events:none; opacity:.16;
+      top: calc(var(--margin) + 66px);
+      bottom: var(--margin);
+      display:grid; grid-auto-rows: 1.2em; border-left:1px dashed var(--line); border-right:1px dashed var(--line);
+    }
+    .gridline .row{ border-bottom:1px dashed var(--line); }
+    .footer-box{
+      font-size:12px; margin-top:auto; border:1px solid var(--line); padding:8px; border-radius:8px;
+      background:#fcfcfc;
+    }
+    .page-num{
+      position:absolute; bottom:8mm; right:10mm; font-size:12px; color:#6b7280;
+    }
+    .stats{ font-size:12px; color:#374151; display:flex; gap:12px; flex-wrap:wrap; }
+
+    /* 印刷 */
+    @media print {
+      body { background:#fff; }
+      .wrap, header{ display:none; }
+      .sheet{ border:none; box-shadow:none; break-after:page; margin:0; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>内容証明 謄本フォーマッタ</h1>
+    <div class="note">横書き <b>20×26 / 13×40 / 26×20</b> に対応（字数・行数は謄本の制限）。末尾付記は枚数不算入。</div>
+  </header>
+
+  <div class="wrap">
+    <!-- 左：入力 -->
+    <section class="card">
+      <h2>① 文面入力</h2>
+      <div class="field">
+        <label>タイトル（任意・例：内容証明）</label>
+        <input id="title" type="text" placeholder="内容証明" />
+      </div>
+      <div class="field">
+        <label>作成日</label>
+        <input id="date" type="text" placeholder="令和7年8月12日 / 2025年8月12日 など" />
+        <div class="hint">日付の表記は自由です（法的要件ではない）。</div>
+      </div>
+      <div class="field">
+        <label>本文</label>
+        <textarea id="body" rows="12" placeholder="ここに本文を入力してください。"></textarea>
+        <div class="hint">括弧（（…）、「…」、『…』、〔…〕、［…］、｛…｝、<…>）は“対で1字”として行折り計算します。</div>
+      </div>
+
+      <h2>② 書式・計数ルール</h2>
+      <div class="row">
+        <div class="field">
+          <label>レイアウト（横書き）</label>
+          <select id="layout">
+            <option value="20x26">1行20字 × 1枚26行</option>
+            <option value="13x40">1行13字 × 1枚40行</option>
+            <option value="26x20">1行26字 × 1枚20行</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>段落字下げ</label>
+          <select id="indent">
+            <option value="0">しない</option>
+            <option value="1">1字下げ</option>
+            <option value="2">2字下げ</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label><input type="checkbox" id="addTitleLine" checked /> 1行目は件名行として中央揃え</label>
+      </div>
+
+      <h2>③ 末尾付記（字数・枚数に算入しません）</h2>
+      <div class="field">
+        <label>受取人（宛先） 住所・氏名</label>
+        <textarea id="to" rows="3" placeholder="〒000-0000&#10;東京都〇〇区…&#10;山田 太郎 様"></textarea>
+      </div>
+      <div class="field">
+        <label>差出人（自分） 住所・氏名</label>
+        <textarea id="from" rows="3" placeholder="〒000-0000&#10;東京都〇〇区…&#10;佐藤 花子 印"></textarea>
+      </div>
+
+      <h2>④ 料金の目安</h2>
+      <div class="row">
+        <div class="field">
+          <label>郵便物の種別</label>
+          <select id="basePost">
+            <option value="110">定形（50gまで）</option>
+            <option value="140">定形外規格内（50gまで）</option>
+            <option value="180">定形外規格内（100gまで）</option>
+            <option value="270">定形外規格内（150gまで）</option>
+            <option value="320">定形外規格内（250gまで）</option>
+          </select>
+          <div class="hint">公式掲示の一例（最新料金は要確認）。</div>
+        </div>
+        <div class="field">
+          <label>配達証明</label>
+          <select id="proof">
+            <option value="0">なし</option>
+            <option value="350">差出時（+350円）</option>
+            <option value="480">差出後（+480円）</option>
+          </select>
+        </div>
+      </div>
+      <div class="note">内訳：内容証明加算（謄本枚数に応じる）＋ 郵便物の料金 ＋ 一般書留加算（10万円まで480円）＋ 任意オプション（配達証明 等）。</div>
+
+      <div class="actions">
+        <button id="renderBtn">整形する</button>
+        <button id="printBtn" class="secondary">印刷 / PDF 保存</button>
+        <button id="sampleBtn" class="ghost">サンプル投入</button>
+      </div>
+    </section>
+
+    <!-- 右：プレビュー -->
+    <section class="card preview">
+      <h2>プレビュー（謄本）</h2>
+      <div id="stats" class="stats"></div>
+      <div id="sheets"></div>
+      <div class="note">
+        <span class="warn">※ 注意：</span>
+        ・謄本2枚以上の場合はつづり目に契印が必要です。・謄本の訂正/挿入/削除は欄外へ字数・箇所を記し押印。本文中の字は判読できるよう残します。
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ====== 設定（公式の掲示値を反映） ======
+    const LAYOUTS = {
+      "20x26": { perLine: 20, linesPerPage: 26 },
+      "13x40": { perLine: 13, linesPerPage: 40 },
+      "26x20": { perLine: 26, linesPerPage: 20 },
+    };
+    // 内容証明「謄本」加算料金（枚数ごと） — 例：1枚480 / 2枚770 / 3枚1060 / 4枚1350 / 5枚1640
+    function contentCertSurcharge(pages){
+      if (pages <= 0) return 0;
+      // 5枚目までの掲示例をカバー。以降は 1枚＋290円の等差で近似（公式の最新ページで要確認）。
+      if (pages === 1) return 480;
+      if (pages === 2) return 770;
+      if (pages === 3) return 1060;
+      if (pages === 4) return 1350;
+      if (pages === 5) return 1640;
+      return 1640 + (pages - 5) * 290; // 参考の簡易近似
+    }
+    // 一般書留 加算（10万円まで）
+    const REGISTERED_10W = 480;
+
+    // 括弧の対：横書きで左右を1字として数えるためのテーブル
+    const PAIRED = {
+      "(": ")", "（":"）", "「":"」", "『":"』", "〔":"〕", "［":"］", "[":"]", "｛":"｝", "{":"}", "〈":"〉", "《":"》", "＜":"＞", "<":">"
+    };
+    const RIGHTS = new Set(Object.values(PAIRED));
+
+    // ====== 核心：行分割アルゴリズム（括弧の対を1字としてカウント） ======
+    function layoutText(raw, perLine, indent){
+      // 段落は改行で分割。各段落先頭にindent分の“空き字（実際はスペース等を出力）”を与える。
+      // 行折りは「表示文字列」と「カウント用の長さ」を分離して制御する。
+      const lines = [];
+      const paras = raw.replace(/\r\n/g,"\n").split("\n");
+      const INDENT = "　".repeat(indent); // 全角スペースで字下げ
+
+      for (let p of paras){
+        const src = p; // 1段落分
+        let i = 0;
+        let visibleBuffer = "";
+        let count = 0;
+
+        // 段落先頭の字下げを適用
+        if (indent > 0 && src.trim().length > 0){
+          visibleBuffer += INDENT;
+          count += indent;
+        }
+
+        // 文字単位で走査
+        while (i < src.length){
+          const ch = src[i];
+
+          // 括弧の対 — 左括弧が来たら対応する右括弧までを“見た目はそのまま”、計数は+1で扱う
+          if (PAIRED[ch]){
+            const right = PAIRED[ch];
+            let j = i + 1;
+            let depth = 1;
+            let seg = ch;
+            while (j < src.length){
+              const cj = src[j];
+              seg += cj;
+              if (cj === ch) depth++;
+              if (cj === right) { depth--; if (depth === 0) { j++; break; } }
+              j++;
+            }
+            // seg が括弧対（もしくは右が見つからなかったら全体）として扱う
+            if (count + 1 > perLine){
+              lines.push(visibleBuffer);
+              visibleBuffer = "";
+              count = 0;
+            }
+            visibleBuffer += seg;
+            count += 1; // 対で1字
+            i = j;
+            continue;
+          }
+
+          // 右括弧単体は通常1字（安全側）
+          if (RIGHTS.has(ch)){
+            if (count + 1 > perLine){
+              lines.push(visibleBuffer);
+              visibleBuffer = "";
+              count = 0;
+            }
+            visibleBuffer += ch;
+            count += 1;
+            i++;
+            continue;
+          }
+
+          // 通常の1字
+          if (count + 1 > perLine){
+            lines.push(visibleBuffer);
+            visibleBuffer = "";
+            count = 0;
+          }
+          visibleBuffer += ch;
+          count += 1;
+          i++;
+        }
+
+        // 残りを行として確定
+        lines.push(visibleBuffer);
+      }
+
+      return lines;
+    }
+
+    // ====== レンダリング ======
+    function render(){
+      const title = document.getElementById("title").value.trim() || "内容証明";
+      const date = document.getElementById("date").value.trim();
+      const body = document.getElementById("body").value;
+      const layoutKey = document.getElementById("layout").value;
+      const indent = parseInt(document.getElementById("indent").value,10) || 0;
+      const addTitleLine = document.getElementById("addTitleLine").checked;
+      const to = document.getElementById("to").value;
+      const from = document.getElementById("from").value;
+
+      const { perLine, linesPerPage } = LAYOUTS[layoutKey];
+
+      // 本文行化
+      let lines = layoutText(body, perLine, indent);
+
+      // 1行目を件名行に（任意）
+      if (addTitleLine){
+        lines.unshift(title);
+      }
+
+      // ページに分割
+      const pages = [];
+      for (let i=0;i<lines.length;i+=linesPerPage){
+        pages.push(lines.slice(i, i+linesPerPage));
+      }
+      const pageCount = Math.max(1, pages.length);
+
+      // 料金試算
+      const basePost = parseInt(document.getElementById("basePost").value,10);
+      const proof = parseInt(document.getElementById("proof").value,10);
+      const cc = contentCertSurcharge(pageCount);
+      const total = cc + basePost + REGISTERED_10W + proof;
+
+      // DOM出力
+      const sheets = document.getElementById("sheets");
+      sheets.innerHTML = "";
+      const stats = document.getElementById("stats");
+      stats.innerHTML = `
+        <span>レイアウト：<b>${perLine}字 × ${linesPerPage}行</b></span>
+        <span>本文行数：<b>${lines.length}</b></span>
+        <span>謄本枚数：<b>${pageCount}</b> 枚</span>
+        <span>料金目安：内容証明 ${cc.toLocaleString()}円 + 郵便 ${basePost}円 + 書留 ${REGISTERED_10W}円 + 配達証明 ${proof}円 = <b>${total.toLocaleString()}円</b></span>
+      `;
+
+      pages.forEach((linesOnPage, idx)=>{
+        const sheet = document.createElement("div");
+        sheet.className = "sheet";
+
+        const hd = document.createElement("header");
+        hd.innerHTML = `
+          <div class="meta">
+            <div>${date ? date : ""}</div>
+            <div>（横書き）</div>
+          </div>
+          <div class="doc-title">${addTitleLine ? "" : title}</div>
+        `;
+        sheet.appendChild(hd);
+
+        const bodyEl = document.createElement("div");
+        bodyEl.className = "body";
+        // 行埋め（見栄えのため空行も生成）
+        const filled = [...linesOnPage];
+        while (filled.length < linesPerPage) filled.push("");
+        bodyEl.textContent = filled.join("\n");
+        sheet.appendChild(bodyEl);
+
+        // 罫ガイド（見やすさ・印刷時は薄い）
+        const grid = document.createElement("div");
+        grid.className = "gridline";
+        for (let i=0;i<linesPerPage;i++){
+          const r = document.createElement("div");
+          r.className = "row";
+          grid.appendChild(r);
+        }
+        sheet.appendChild(grid);
+
+        // 末尾付記（字数不算入）
+        if (idx === pages.length - 1){
+          const foot = document.createElement("div");
+          foot.className = "footer-box";
+          foot.innerHTML = `
+            <div><b>［受取人］</b><br>${to.replace(/\n/g,"<br>") || "（宛先の住所・氏名を記載）"}</div>
+            <div style="height:8px"></div>
+            <div><b>［差出人］</b><br>${from.replace(/\n/g,"<br>") || "（差出人の住所・氏名を記載）"}</div>
+          `;
+          sheet.appendChild(foot);
+        }
+
+        const pn = document.createElement("div");
+        pn.className = "page-num";
+        pn.textContent = `${idx+1} / ${pageCount}`;
+        sheet.appendChild(pn);
+
+        sheets.appendChild(sheet);
+      });
+    }
+
+    // ====== UI バインド ======
+    document.getElementById("renderBtn").addEventListener("click", render);
+    document.getElementById("printBtn").addEventListener("click", ()=>{ window.print(); });
+    document.getElementById("sampleBtn").addEventListener("click", ()=>{
+      document.getElementById("title").value = "催告書（内容証明）";
+      document.getElementById("date").value = "2025年8月12日";
+      document.getElementById("body").value =
+`貴殿に貸与した下記機器の返還がなされていないため、次のとおり催告します。
+
+１　対象物
+（１）ノートパソコン１台（資産番号A-001）
+（２）周辺機器一式
+
+２　返還期限
+本書面到達の日から起算して７日以内。
+
+３　特記事項
+上記期限までに返還がない場合、相当額の損害金を請求します。
+
+以上`;
+      document.getElementById("to").value = "〒100-0000\n東京都千代田区〇〇1-2-3\n山田 太郎 様";
+      document.getElementById("from").value = "〒150-0000\n東京都渋谷区△△4-5-6\n株式会社サンプル\n代表取締役　佐藤 花子 印";
+      render();
+    });
+
+    // 初期
+    render();
+  </script>
+</body>
+</html>
