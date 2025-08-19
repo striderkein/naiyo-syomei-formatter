@@ -189,7 +189,7 @@
 
       <div class="actions">
         <button id="renderBtn">整形する</button>
-        <button id="printBtn" class="secondary">印刷 / PDF 保存</button>
+        <button id="pdfBtn" class="secondary">PDF をダウンロード</button>
         <button id="sampleBtn" class="ghost">サンプル投入</button>
       </div>
     </section>
@@ -366,7 +366,7 @@
         hd.innerHTML = `
           <div class="meta">
             <div>${date ? date : ""}</div>
-            <div>（横書き）</div>
+            <div class="pdf-exclude">（横書き）</div>
           </div>
           <div class="doc-title">${addTitleLine ? "" : title}</div>
         `;
@@ -393,7 +393,7 @@
         // 末尾付記（字数不算入）
         if (idx === pages.length - 1){
           const foot = document.createElement("div");
-          foot.className = "footer-box";
+          foot.className = "footer-box pdf-exclude";
           foot.innerHTML = `
             <div><b>［受取人］</b><br>${to.replace(/\n/g,"<br>") || "（宛先の住所・氏名を記載）"}</div>
             <div style="height:8px"></div>
@@ -403,7 +403,7 @@
         }
 
         const pn = document.createElement("div");
-        pn.className = "page-num";
+        pn.className = "page-num pdf-exclude";
         pn.textContent = `${idx+1} / ${pageCount}`;
         sheet.appendChild(pn);
 
@@ -413,7 +413,6 @@
 
     // ====== UI バインド ======
     document.getElementById("renderBtn").addEventListener("click", render);
-    document.getElementById("printBtn").addEventListener("click", ()=>{ window.print(); });
     document.getElementById("sampleBtn").addEventListener("click", ()=>{
       document.getElementById("title").value = "催告書（内容証明）";
       document.getElementById("date").value = "2025年8月12日";
@@ -439,5 +438,50 @@
     // 初期
     render();
   </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script>
+    async function downloadPdf() {
+      // レイアウト済みでなければ最新状態に
+      render();
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+
+      const sheets = Array.from(document.querySelectorAll('.sheet'));
+      if (sheets.length === 0) return;
+
+      // 各ページを高解像度でキャプチャ → A4全面に貼り付け
+      for (let i = 0; i < sheets.length; i++) {
+        const el = sheets[i];
+
+        // 高解像度（scale=2〜3）。必要に応じて調整可
+        const canvas = await html2canvas(el, {
+          scale: 2,
+          backgroundColor: '#ffffff',
+          useCORS: true, // 外部画像を使う場合の保険
+          windowWidth: document.documentElement.scrollWidth,
+          windowHeight: document.documentElement.scrollHeight,
+          ignoreElements: (node) => node?.classList?.contains('pdf-exclude')
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        // A4 は 210×297mm。全面に配置（余白は既に .sheet 内で表現済み）
+        doc.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+
+        if (i < sheets.length - 1) doc.addPage('a4', 'portrait');
+      }
+
+      // ファイル名：プロジェクト名＋日付
+      const y = new Date();
+      const ts = `${y.getFullYear()}${String(y.getMonth()+1).padStart(2,'0')}${String(y.getDate()).padStart(2,'0')}`;
+      doc.save(`naiyo-syomei-formatter_${ts}.pdf`);
+    }
+
+    // 既存のイベント登録の近くに追加
+    document.getElementById('pdfBtn').addEventListener('click', downloadPdf);
+  </script>
+
 </body>
 </html>
