@@ -395,7 +395,7 @@
         // 末尾付記（字数不算入）
         if (idx === pages.length - 1){
           const foot = document.createElement("div");
-          foot.className = "footer-box pdf-exclude";
+          foot.className = "footer-box";
           foot.innerHTML = `
             <div><b>［受取人］</b><br>${to.replace(/\n/g,"<br>") || "（宛先の住所・氏名を記載）"}</div>
             <div style="height:8px"></div>
