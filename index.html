@@ -155,12 +155,12 @@
 
       <h2>③ 末尾付記（字数・枚数に算入しません）</h2>
       <div class="field">
-        <label>受取人（宛先） 住所・氏名</label>
-        <textarea id="to" rows="3" placeholder="〒000-0000&#10;東京都〇〇区…&#10;山田 太郎 様"></textarea>
+        <label>差出人（自分） 住所・氏名</label>
+        <textarea id="from" rows="3" placeholder="〒000-0000&#10;東京都〇〇区…&#10;山田 太郎"></textarea>
       </div>
       <div class="field">
-        <label>差出人（自分） 住所・氏名</label>
-        <textarea id="from" rows="3" placeholder="〒000-0000&#10;東京都〇〇区…&#10;佐藤 花子 印"></textarea>
+        <label>受取人（宛先） 住所・氏名</label>
+        <textarea id="to" rows="3" placeholder="〒000-0000&#10;東京都〇〇区…&#10;佐藤 花子 様"></textarea>
       </div>
 
       <h2>④ 料金の目安</h2>
@@ -395,9 +395,9 @@
           const foot = document.createElement("div");
           foot.className = "footer-box";
           foot.innerHTML = `
-            <div><b>受取人</b><br>${to.replace(/\n/g,"<br>") || "（宛先の住所・氏名を記載）"}</div>
-            <div style="height:8px"></div>
             <div><b>差出人</b><br>${from.replace(/\n/g,"<br>") || "（差出人の住所・氏名を記載）"}</div>
+            <div style="height:8px"></div>
+            <div><b>受取人</b><br>${to.replace(/\n/g,"<br>") || "（宛先の住所・氏名を記載）"}</div>
           `;
           sheet.appendChild(foot);
         }
