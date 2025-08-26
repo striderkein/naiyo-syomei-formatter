@@ -334,6 +334,9 @@
         lines.unshift(title);
       }
 
+      // 空行を除いた行数カウント（日本郵便の規定により空行は行数に含めない）
+      const nonEmptyLineCount = lines.filter(line => line.trim().length > 0).length;
+
       // ページに分割
       const pages = [];
       for (let i=0;i<lines.length;i+=linesPerPage){
@@ -353,7 +356,7 @@
       const stats = document.getElementById("stats");
       stats.innerHTML = `
         <span>レイアウト：<b>${perLine}字 × ${linesPerPage}行</b></span>
-        <span>本文行数：<b>${lines.length}</b></span>
+        <span>本文行数：<b>${nonEmptyLineCount}</b></span>
         <span>謄本枚数：<b>${pageCount}</b> 枚</span>
         <span>料金目安：内容証明 ${cc.toLocaleString()}円 + 郵便 ${basePost}円 + 書留 ${REGISTERED_10W}円 + 配達証明 ${proof}円 = <b>${total.toLocaleString()}円</b></span>
       `;
