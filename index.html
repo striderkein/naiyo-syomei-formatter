@@ -395,9 +395,11 @@
           const foot = document.createElement("div");
           foot.className = "footer-box";
           foot.innerHTML = `
-            <div><b>差出人</b><br>${from.replace(/\n/g,"<br>") || "（差出人の住所・氏名を記載）"}</div>
+            <!-- 差出人 -->
+            <div>${from.replace(/\n/g,"<br>") || "（差出人の住所・氏名を記載）"}</div>
             <div style="height:8px"></div>
-            <div><b>受取人</b><br>${to.replace(/\n/g,"<br>") || "（宛先の住所・氏名を記載）"}</div>
+            <!-- 受取人 -->
+            <div>${to.replace(/\n/g,"<br>") || "（宛先の住所・氏名を記載）"}</div>
           `;
           sheet.appendChild(foot);
         }
