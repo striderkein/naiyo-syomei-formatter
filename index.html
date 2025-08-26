@@ -207,6 +207,51 @@
   </div>
 
   <script>
+    // ====== 半角文字を全角文字に変換 ======
+    function convertHankakuToZenkaku(text) {
+      return text
+        // 数字 0-9 → ０-９
+        .replace(/[0-9]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x30 + 0xFF10))
+        // アルファベット大文字 A-Z → Ａ-Ｚ
+        .replace(/[A-Z]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x41 + 0xFF21))
+        // アルファベット小文字 a-z → ａ-ｚ
+        .replace(/[a-z]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x61 + 0xFF41))
+        // 記号類
+        .replace(/ /g, '　') // 半角スペース → 全角スペース
+        .replace(/!/g, '！')
+        .replace(/"/g, '\u201D') // 右ダブルクォート
+        .replace(/#/g, '＃')
+        .replace(/\$/g, '＄')
+        .replace(/%/g, '％')
+        .replace(/&/g, '＆')
+        .replace(/'/g, '\u2019') // 右シングルクォート
+        .replace(/\(/g, '（')
+        .replace(/\)/g, '）')
+        .replace(/\*/g, '＊')
+        .replace(/\+/g, '＋')
+        .replace(/,/g, '，')
+        .replace(/-/g, '－')
+        .replace(/\./g, '．')
+        .replace(/\//g, '／')
+        .replace(/:/g, '：')
+        .replace(/;/g, '；')
+        .replace(/</g, '＜')
+        .replace(/=/g, '＝')
+        .replace(/>/g, '＞')
+        .replace(/\?/g, '？')
+        .replace(/@/g, '＠')
+        .replace(/\[/g, '［')
+        .replace(/\\/g, '＼')
+        .replace(/\]/g, '］')
+        .replace(/\^/g, '＾')
+        .replace(/_/g, '＿')
+        .replace(/`/g, '｀')
+        .replace(/\{/g, '｛')
+        .replace(/\|/g, '｜')
+        .replace(/\}/g, '｝')
+        .replace(/~/g, '～');
+    }
+
     // ====== 設定（公式の掲示値を反映） ======
     const LAYOUTS = {
       "20x26": { perLine: 20, linesPerPage: 26 },
@@ -437,6 +482,30 @@
       document.getElementById("from").value = "〒150-0000\n東京都渋谷区△△4-5-6\n株式会社サンプル\n代表取締役　佐藤 花子 印";
       render();
     });
+
+    // ====== 半角→全角変換の自動適用 ======
+    function addHankakuToZenkakuConverter(elementId) {
+      const element = document.getElementById(elementId);
+      element.addEventListener('input', function(e) {
+        const cursorPosition = e.target.selectionStart;
+        const originalLength = e.target.value.length;
+        const convertedText = convertHankakuToZenkaku(e.target.value);
+        
+        if (convertedText !== e.target.value) {
+          e.target.value = convertedText;
+          // カーソル位置を調整（変換によって文字数が変わった場合）
+          const lengthDifference = convertedText.length - originalLength;
+          e.target.setSelectionRange(cursorPosition + lengthDifference, cursorPosition + lengthDifference);
+        }
+      });
+    }
+
+    // 指定された入力項目に変換機能を適用
+    addHankakuToZenkakuConverter("title");
+    addHankakuToZenkakuConverter("date");
+    addHankakuToZenkakuConverter("body");
+    addHankakuToZenkakuConverter("from");
+    addHankakuToZenkakuConverter("to");
 
     // 初期
     render();
